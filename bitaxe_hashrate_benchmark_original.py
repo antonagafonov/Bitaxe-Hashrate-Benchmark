@@ -4,11 +4,10 @@ import json
 import signal
 import sys
 import argparse
-import os
-import glob
 from datetime import datetime
 
 START_TIME = datetime.now().strftime("%Y-%m-%d_%H")
+
 
 if "START_TIME" not in globals():
     START_TIME = datetime.now().strftime("%Y-%m-%d_%H")
@@ -19,52 +18,8 @@ YELLOW = "\033[93m"
 RED = "\033[91m"
 RESET = "\033[0m"
 
-# Default configuration
-DEFAULT_CONFIG = {
-    "voltage_increment": 20,
-    "frequency_increment": 25,
-    "sleep_time": 90,
-    "benchmark_time": 600,
-    "sample_interval": 15,
-    "max_temp": 65,
-    "max_allowed_voltage": 1200,
-    "max_allowed_frequency": 800,
-    "max_vr_temp": 80,
-    "min_input_voltage": 4800,
-    "max_input_voltage": 5500,
-    "max_power": 30,
-    "min_allowed_voltage": 1000,
-    "min_allowed_frequency": 400,
-    "initial_voltage": 1150,
-    "initial_frequency": 500,
-}
 
-CONFIG_FILENAME = "bitaxe_benchmark_config.json"
-
-
-def load_config():
-    """Load configuration from JSON file, create if doesn't exist"""
-    if os.path.exists(CONFIG_FILENAME):
-        try:
-            with open(CONFIG_FILENAME, "r") as f:
-                config = json.load(f)
-                print(GREEN + f"Configuration loaded from {CONFIG_FILENAME}" + RESET)
-                return config
-        except (IOError, json.JSONDecodeError) as e:
-            print(YELLOW + f"Warning: Could not load config file: {e}" + RESET)
-            print(YELLOW + "Creating default configuration file..." + RESET)
-
-    # Create default config file
-    try:
-        with open(CONFIG_FILENAME, "w") as f:
-            json.dump(DEFAULT_CONFIG, f, indent=4)
-        print(GREEN + f"Default configuration created: {CONFIG_FILENAME}" + RESET)
-    except IOError as e:
-        print(YELLOW + f"Warning: Could not create config file: {e}" + RESET)
-
-    return DEFAULT_CONFIG.copy()
-
-
+# Add this before the configuration section
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bitaxe Hashrate Benchmark Tool")
     parser.add_argument(
@@ -74,13 +29,15 @@ def parse_arguments():
         "-v",
         "--voltage",
         type=int,
-        help="Initial voltage in mV (overrides config file)",
+        default=1190,
+        help="Initial voltage in mV (default: 1150)",
     )
     parser.add_argument(
         "-f",
         "--frequency",
         type=int,
-        help="Initial frequency in MHz (overrides config file)",
+        default=900,
+        help="Initial frequency in MHz (default: 800)",
     )
 
     # If no arguments are provided, print help and exit
@@ -91,40 +48,33 @@ def parse_arguments():
     return parser.parse_args()
 
 
-# Load configuration first
-config = load_config()
-
-# Parse arguments
+# Replace the configuration section
 args = parse_arguments()
 bitaxe_ip = f"http://{args.bitaxe_ip}"
+initial_voltage = args.voltage
+initial_frequency = args.frequency
 
-# Command line arguments override config file
-initial_voltage = (
-    args.voltage if args.voltage is not None else config["initial_voltage"]
-)
-initial_frequency = (
-    args.frequency if args.frequency is not None else config["initial_frequency"]
-)
-
-# Configuration from config file
-voltage_increment = config["voltage_increment"]
-frequency_increment = config["frequency_increment"]
-sleep_time = config["sleep_time"]
-benchmark_time = config["benchmark_time"]
-sample_interval = config["sample_interval"]
-max_temp = config["max_temp"]
-max_allowed_voltage = config["max_allowed_voltage"]
-max_allowed_frequency = config["max_allowed_frequency"]
-max_vr_temp = config["max_vr_temp"]
-min_input_voltage = config["min_input_voltage"]
-max_input_voltage = config["max_input_voltage"]
-max_power = config["max_power"]
-min_allowed_voltage = config["min_allowed_voltage"]
-min_allowed_frequency = config["min_allowed_frequency"]
+# Configuration
+voltage_increment = 20
+frequency_increment = 25
+sleep_time = 90  # Wait 90 seconds before starting the benchmark
+benchmark_time = 600  # 10 minutes benchmark time
+sample_interval = 10  # 15 seconds sample interval
+max_temp = 70  # Will stop if temperature reaches or exceeds this value
+max_allowed_voltage = 1400  # Maximum allowed core voltage
+max_allowed_frequency = 1200  # Maximum allowed core frequency
+max_vr_temp = 90  # Maximum allowed voltage regulator temperature
+min_input_voltage = 4800  # Minimum allowed input voltage
+max_input_voltage = 5500  # Maximum allowed input voltage
+max_power = 45.0  # Max of 35W because of DC plug
 
 # Add these variables to the global configuration section
 small_core_count = None
 asic_count = None
+
+# Add these constants to the configuration section
+min_allowed_voltage = 1000  # Minimum allowed core voltage
+min_allowed_frequency = 400  # Minimum allowed frequency
 
 # Validate core voltages
 if initial_voltage > max_allowed_voltage:
@@ -173,57 +123,6 @@ default_frequency = None
 
 # Check if we're handling an interrupt (Ctrl+C)
 handling_interrupt = False
-
-
-def load_existing_results():
-    """Load existing results from JSON file if it exists"""
-    ip_address = bitaxe_ip.replace("http://", "")
-
-    # Directory where your files are located
-    directory = "F:/Bitaxe-Hashrate-Benchmark"  # change as needed
-
-    # Find all files starting with "bitaxe_benchmark_results"
-    files = glob.glob(os.path.join(directory, "bitaxe_benchmark_results*.json"))
-
-    if files:
-        filename = files[0]  # take the first match
-        print(f"Found file: {filename}")
-    else:
-        print("No matching file found.")
-
-    if os.path.exists(filename):
-        try:
-            with open(filename, "r") as f:
-                data = json.load(f)
-                # Handle both old format (list) and new format (dict with all_results)
-                if isinstance(data, list):
-                    existing = data
-                elif isinstance(data, dict) and "all_results" in data:
-                    existing = data["all_results"]
-                else:
-                    existing = []
-
-                print(
-                    GREEN
-                    + f"Found existing results file with {len(existing)} test(s)."
-                    + RESET
-                )
-                return existing
-        except (IOError, json.JSONDecodeError) as e:
-            print(YELLOW + f"Warning: Could not load existing results: {e}" + RESET)
-            return []
-    return []
-
-
-def is_already_tested(voltage, frequency, existing_results):
-    """Check if a voltage/frequency combination has already been tested"""
-    for result in existing_results:
-        if (
-            result.get("coreVoltage") == voltage
-            and result.get("frequency") == frequency
-        ):
-            return True
-    return False
 
 
 def fetch_default_settings():
@@ -451,8 +350,6 @@ def benchmark_iteration(core_voltage, frequency):
         temp = info.get("temp")
         vr_temp = info.get("vrTemp")  # Get VR temperature if available
         voltage = info.get("voltage")
-        fan_speed = info.get("fanrpm")
-
         if temp is None:
             print(YELLOW + "Temperature data not available." + RESET)
             return None, None, None, False, None, "TEMPERATURE_DATA_FAILURE"
@@ -528,9 +425,7 @@ def benchmark_iteration(core_voltage, frequency):
             f"F: {frequency:4d}MHz | "
             f"H: {int(hash_rate):4d} GH/s | "
             f"IV: {int(voltage):4d}mV | "
-            f"T: {int(temp):2d}°C | "
-            f"Fan: {int(fan_speed):3d}rpm | "
-            f"W: {int(power_consumption):3d}W"
+            f"T: {int(temp):2d}°C"
         )
         if vr_temp is not None and vr_temp > 0:
             status_line += f" | VR: {int(vr_temp):2d}°C"
@@ -640,10 +535,6 @@ def reset_to_best_setting():
 try:
     fetch_default_settings()
 
-    # Load existing results
-    existing_results = load_existing_results()
-    results.extend(existing_results)
-
     # Add disclaimer
     print(RED + "\nDISCLAIMER:" + RESET)
     print(
@@ -669,23 +560,6 @@ try:
         current_voltage <= max_allowed_voltage
         and current_frequency <= max_allowed_frequency
     ):
-        # Check if this combination was already tested
-        if is_already_tested(current_voltage, current_frequency, existing_results):
-            print(
-                YELLOW
-                + f"Skipping already tested: Voltage = {current_voltage}mV, Frequency = {current_frequency}MHz"
-                + RESET
-            )
-            # Move to next frequency
-            if current_frequency + frequency_increment <= max_allowed_frequency:
-                current_frequency += frequency_increment
-            elif current_voltage + voltage_increment <= max_allowed_voltage:
-                current_voltage += voltage_increment
-                current_frequency = initial_frequency
-            else:
-                break
-            continue
-
         set_system_settings(current_voltage, current_frequency)
         (
             avg_hashrate,

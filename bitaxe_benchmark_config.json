@@ -1,0 +1,18 @@
+{
+    "voltage_increment": 20,
+    "frequency_increment": 25,
+    "sleep_time": 90,
+    "benchmark_time": 600,
+    "sample_interval": 15,
+    "max_temp": 65,
+    "max_allowed_voltage": 1400,
+    "max_allowed_frequency": 850,
+    "max_vr_temp": 80,
+    "min_input_voltage": 4800,
+    "max_input_voltage": 5500,
+    "max_power": 32,
+    "min_allowed_voltage": 1000,
+    "min_allowed_frequency": 400,
+    "initial_voltage": 1150,
+    "initial_frequency": 500
+}
