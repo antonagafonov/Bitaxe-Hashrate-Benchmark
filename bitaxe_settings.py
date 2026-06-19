@@ -9,6 +9,12 @@ YELLOW = "\033[93m"
 RED = "\033[91m"
 RESET = "\033[0m"
 
+# Safe operating ranges (matches bitaxe_benchmark_config.json)
+MIN_VOLTAGE_MV = 1000
+MAX_VOLTAGE_MV = 1400
+MIN_FREQUENCY_MHZ = 400
+MAX_FREQUENCY_MHZ = 1200
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Bitaxe Settings Tool - Set voltage and frequency")
     parser.add_argument(
@@ -40,7 +46,20 @@ def parse_arguments():
         parser.print_help()
         sys.exit(1)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if not (MIN_VOLTAGE_MV <= args.voltage <= MAX_VOLTAGE_MV):
+        parser.error(
+            f"voltage {args.voltage}mV out of range "
+            f"[{MIN_VOLTAGE_MV}, {MAX_VOLTAGE_MV}]mV"
+        )
+    if not (MIN_FREQUENCY_MHZ <= args.frequency <= MAX_FREQUENCY_MHZ):
+        parser.error(
+            f"frequency {args.frequency}MHz out of range "
+            f"[{MIN_FREQUENCY_MHZ}, {MAX_FREQUENCY_MHZ}]MHz"
+        )
+
+    return args
 
 def get_current_settings(bitaxe_ip):
     """Fetch and display current settings"""

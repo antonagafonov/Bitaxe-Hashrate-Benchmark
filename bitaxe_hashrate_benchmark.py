@@ -179,17 +179,15 @@ def load_existing_results():
     """Load existing results from JSON file if it exists"""
     ip_address = bitaxe_ip.replace("http://", "")
 
-    # Directory where your files are located
-    directory = "F:/Bitaxe-Hashrate-Benchmark"  # change as needed
+    # Find all files starting with "bitaxe_benchmark_results" in the current directory
+    files = glob.glob("bitaxe_benchmark_results*.json")
 
-    # Find all files starting with "bitaxe_benchmark_results"
-    files = glob.glob(os.path.join(directory, "bitaxe_benchmark_results*.json"))
-
-    if files:
-        filename = files[0]  # take the first match
-        print(f"Found file: {filename}")
-    else:
+    if not files:
         print("No matching file found.")
+        return []
+
+    filename = files[0]  # take the first match
+    print(f"Found file: {filename}")
 
     if os.path.exists(filename):
         try:
